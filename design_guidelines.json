@@ -1,0 +1,160 @@
+{
+  "project_name": "Brilliant Grammar School and PU College",
+  "domain": "Education / School",
+  "theme": "Light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast) + Archetype 5 (Premium Touch) -> 'Modern Academic Prestige'",
+  "emotional_tone": "Trustworthy, Ambitious, Structured yet Welcoming, Premium",
+  
+  "typography": {
+    "fonts_required_to_install": ["@fontsource/playfair-display", "@fontsource/manrope"],
+    "headings": {
+      "font_family": "'Playfair Display', serif",
+      "weights": [400, 600, 700],
+      "usage": "Use for all H1, H2, H3 elements. Represents tradition, prestige, and academic excellence.",
+      "scales": {
+        "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-none",
+        "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight leading-tight",
+        "h3": "text-xl sm:text-2xl tracking-normal leading-snug"
+      }
+    },
+    "body": {
+      "font_family": "'Manrope', sans-serif",
+      "weights": [300, 400, 500, 600],
+      "usage": "Use for paragraphs, UI elements, navigation, and data tables. Clean and highly legible.",
+      "scales": {
+        "large": "text-lg leading-relaxed",
+        "base": "text-base leading-relaxed",
+        "small": "text-sm leading-normal uppercase tracking-[0.2em]"
+      }
+    }
+  },
+
+  "colors": {
+    "primary": {
+      "hex": "#0A192F",
+      "tailwind": "bg-[#0A192F] text-white",
+      "description": "Deep Oxford Navy. Used for strong authority, primary buttons, footers, and hero overlays."
+    },
+    "accent": {
+      "hex": "#D4AF37",
+      "tailwind": "bg-[#D4AF37] text-black",
+      "description": "Warm Ochre/Gold. Used sparingly for highlights, premium badges, hover states, and critical CTAs to denote prestige."
+    },
+    "background": {
+      "hex": "#F9FAFB",
+      "tailwind": "bg-gray-50",
+      "description": "Soft Alabaster. Main page background to reduce stark white glare while maintaining clean look."
+    },
+    "surface": {
+      "hex": "#FFFFFF",
+      "tailwind": "bg-white",
+      "description": "Pure white. Used for cards, form backgrounds, and overlapping bento grids."
+    },
+    "text": {
+      "primary": "#0A192F",
+      "secondary": "#4B5563",
+      "muted": "#9CA3AF"
+    },
+    "rules": [
+      "No generic full-screen gradients. Keep colors solid, crisp, and high-contrast.",
+      "Hover state color must always be explicitly defined.",
+      "The 'Tinted Grey' Rule: Grays must feel slightly cool to match the Navy theme."
+    ]
+  },
+
+  "layout_and_spacing": {
+    "philosophy": "Generous Spacing (Tailwind Scale p-8, p-12, p-24). Allow breathing room for content.",
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "grids": {
+      "marketing": "MODE A: The 'Bento' Grid. Use grid-cols-1 md:grid-cols-12 with wide gaps (gap-8 to gap-12). Prioritize asymmetry. Mix col-span-4, col-span-8 to create visual tension.",
+      "dashboard": "MODE B: The 'Control Room' Grid. Dense, strict hierarchy for Admin Panel. grid-cols-1 md:grid-cols-4 gap-6."
+    },
+    "sections": "Padding top/bottom for major sections should be py-16 or py-24."
+  },
+
+  "components_strategy": {
+    "navigation": {
+      "style": "Glassmorphism (Crystal Variant)",
+      "classes": "sticky top-0 z-50 backdrop-blur-xl bg-white/80 border-b border-gray-200 shadow-sm",
+      "rules": "Must have visible links on desktop. Hamburger menu for mobile only. Logo on left, links center, CTA right."
+    },
+    "hero_section": {
+      "layout": "Asymmetric split or overlapping deep navy box over the main background image.",
+      "overlay": "If text is over image, use bg-black/40 to bg-black/60. Text MUST have high contrast.",
+      "animation": "Subtle fade up for text, slight parallax or slow scale for background image."
+    },
+    "cards": {
+      "style": "Neumorphism Tactile variant but crisp.",
+      "classes": "bg-white border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)]",
+      "padding": "p-6 to p-8"
+    },
+    "buttons": {
+      "primary": "bg-[#0A192F] text-white px-6 py-3 rounded-none font-medium transition-all hover:bg-[#1E293B]",
+      "secondary": "bg-[#D4AF37] text-white px-6 py-3 rounded-none font-medium transition-all hover:bg-[#B4952F]",
+      "outline": "border border-[#0A192F] text-[#0A192F] px-6 py-3 rounded-none font-medium transition-all hover:bg-[#0A192F] hover:text-white"
+    },
+    "forms": {
+      "library": "Shadcn UI",
+      "style": "Inputs must be crisp with rounded-md, border-gray-300 focus:ring-2 focus:ring-[#0A192F] focus:border-transparent."
+    },
+    "admin_dashboard": {
+      "library": "Shadcn UI heavily utilized for Tables, Dialogs, Dropdowns, and Tabs.",
+      "style": "Dense data view, flat solid surfaces, high contrast headers."
+    }
+  },
+
+  "motion_and_interaction": {
+    "hover_states": "All interactive elements must change state visually. Add `data-testid` to all.",
+    "page_transitions": "Framer Motion. Use staggered entrance animations for grid items (0.1s delay increments).",
+    "scrolling": "If feasible, implement Lenis for smooth momentum scrolling on the marketing pages."
+  },
+
+  "icons_and_assets": {
+    "library": "lucide-react",
+    "usage": "Use with 1.5px stroke width for a refined, modern look."
+  },
+
+  "media": {
+    "hero_campus": {
+      "url": "https://images.pexels.com/photos/30945258/pexels-photo-30945258.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Aerial view of a modern educational building. Use for Home page Hero background.",
+      "placement": "Home Page Hero Section"
+    },
+    "students_collaborating": {
+      "url": "https://images.unsplash.com/photo-1758270705518-b61b40527e76?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MDV8MHwxfHNlYXJjaHwyfHxzdHVkZW50cyUyMHN0dWR5aW5nJTIwZGl2ZXJzZSUyMGNsYXNzcm9vbXxlbnwwfHx8fDE3NzU5MDEzODF8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Diverse group of students collaborating. Use for 'About Us' or 'Admissions' sections.",
+      "placement": "About Us Page / Home Page Highlight"
+    },
+    "classroom_lecture": {
+      "url": "https://images.unsplash.com/photo-1758270705087-76e81a5117bd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MDV8MHwxfHNlYXJjaHw0fHxzdHVkZW50cyUyMHN0dWR5aW5nJTIwZGl2ZXJzZSUyMGNsYXNzcm9vbXxlbnwwfHx8fDE3NzU5MDEzODF8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Professor teaching students in a lecture hall.",
+      "placement": "Courses Page"
+    },
+    "science_lab": {
+      "url": "https://images.unsplash.com/photo-1773489753005-dba9bf8d72bf?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwyfHxzY2llbmNlJTIwbGFib3JhdG9yeSUyMHN0dWRlbnRzJTIwaGlnaCUyMHNjaG9vbHxlbnwwfHx8fDE3NzU5MDEzOTJ8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Student writing on blackboard/learning.",
+      "placement": "Facilities Page - Labs section"
+    },
+    "sports_field": {
+      "url": "https://images.unsplash.com/photo-1759763494425-58fc490742ba?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwxfHxzdHVkZW50cyUyMHBsYXlpbmclMjBzcG9ydHMlMjBzY2hvb2wlMjBmaWVsZHxlbnwwfHx8fDE3NzU5MDEzOTJ8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Aerial view of a sports court.",
+      "placement": "Facilities Page - Sports section / Gallery"
+    },
+    "abstract_texture": {
+      "url": "https://images.unsplash.com/photo-1773892574539-6b5b1d34722f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA0MTJ8MHwxfHNlYXJjaHwxfHx3aGl0ZSUyMG1pbmltYWxpc3QlMjB0ZXh0dXJlJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzU5MDEzOTJ8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Abstract white wavy vertical lines pattern. Use as a subtle background layer for text-heavy sections to remove flat digital feeling.",
+      "placement": "Backgrounds for Contact/Enquiry or Text blocks"
+    }
+  },
+
+  "critical_instructions_for_agent": [
+    "You are building a React frontend and FastAPI backend. Use pure React with Vite if no framework specified, but ensure routing is configured (react-router-dom).",
+    "Include `data-testid` on all buttons, links, and forms for testing.",
+    "Do NOT use 'Inter' for headings. Use Playfair Display.",
+    "Marketing sections (Home, About, Courses, Facilities) must use custom HTML/Tailwind to achieve the Bento layouts and overlapping components.",
+    "Use Shadcn UI primarily for the Admin Dashboard and complex forms (Enquiry page).",
+    "Never center everything. Asymmetry creates tension and interest.",
+    "Ensure email notification is set up via Resend in the backend FastAPI application.",
+    "Integrate Gemini 3 Flash for the chatbot feature."
+  ]
+}
