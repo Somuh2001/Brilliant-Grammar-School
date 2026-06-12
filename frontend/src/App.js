@@ -1,53 +1,101 @@
-import { useEffect } from "react";
-import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Navigation from './components/Navigation';
+import Footer from './components/Footer';
+import Chatbot from './components/Chatbot';
+import Home from './pages/Home';
+import About from './pages/About';
+import Courses from './pages/Courses';
+import Facilities from './pages/Facilities';
+import Gallery from './pages/Gallery';
+import Contact from './pages/Contact';
+import Enquiry from './pages/Enquiry';
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import './App.css';
 
 function App() {
   return (
-    <div className="App">
+    <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
+        <Toaster position="top-right" richColors />
+        <div className="App body-font">
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={
+              <>
+                <Navigation />
+                <Home />
+                <Footer />
+                <Chatbot />
+              </>
+            } />
+            <Route path="/about" element={
+              <>
+                <Navigation />
+                <About />
+                <Footer />
+                <Chatbot />
+              </>
+            } />
+            <Route path="/courses" element={
+              <>
+                <Navigation />
+                <Courses />
+                <Footer />
+                <Chatbot />
+              </>
+            } />
+            <Route path="/facilities" element={
+              <>
+                <Navigation />
+                <Facilities />
+                <Footer />
+                <Chatbot />
+              </>
+            } />
+            <Route path="/gallery" element={
+              <>
+                <Navigation />
+                <Gallery />
+                <Footer />
+                <Chatbot />
+              </>
+            } />
+            <Route path="/contact" element={
+              <>
+                <Navigation />
+                <Contact />
+                <Footer />
+                <Chatbot />
+              </>
+            } />
+            <Route path="/enquiry" element={
+              <>
+                <Navigation />
+                <Enquiry />
+                <Footer />
+                <Chatbot />
+              </>
+            } />
+
+            {/* Admin Routes */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route 
+              path="/admin/dashboard" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+          </Routes>
+        </div>
       </BrowserRouter>
-    </div>
+    </AuthProvider>
   );
 }
 
