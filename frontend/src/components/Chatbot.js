@@ -59,7 +59,8 @@ const Chatbot = () => {
         <button
           onClick={() => setIsOpen(true)}
           data-testid="chatbot-open-btn"
-          className="fixed bottom-6 right-6 bg-[#0A192F] text-white p-4 shadow-lg hover:bg-[#1E293B] transition-all duration-300 z-50 btn-primary"
+          className="fixed bottom-6 right-6 bg-[#0A192F] text-white p-4 shadow-lg hover:bg-[#1E293B] transition-all duration-300 btn-primary"
+          style={{ zIndex: 9999 }}
         >
           <MessageCircle className="w-6 h-6" />
         </button>
@@ -67,7 +68,7 @@ const Chatbot = () => {
 
       {/* Chatbot Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 bg-white border border-gray-200 shadow-2xl z-50 flex flex-col slide-up" style={{ height: '600px' }}>
+        <div className="fixed bottom-6 right-6 w-96 bg-white border border-gray-200 shadow-2xl flex flex-col slide-up" style={{ height: '600px', zIndex: 9999 }}>
           {/* Header */}
           <div className="bg-[#0A192F] text-white p-4 flex justify-between items-center">
             <div>
