@@ -22,6 +22,11 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 import csv
 import io
 from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.chart import BarChart, PieChart, Reference
+from openpyxl.utils import get_column_letter
+from collections import Counter
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -392,6 +397,207 @@ async def export_enquiries_csv(request: Request):
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode('utf-8')),
         media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.get("/enquiries/export/xlsx")
+async def export_enquiries_xlsx(request: Request):
+    await get_admin_user(request)
+    enquiries = await db.enquiries.find({}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    
+    wb = Workbook()
+    
+    # ==================== SHEET 1: ENQUIRIES DATA ====================
+    ws = wb.active
+    ws.title = "Enquiries"
+    
+    # Styles
+    header_font = Font(name='Calibri', size=12, bold=True, color='FFFFFF')
+    header_fill = PatternFill(start_color='0A192F', end_color='0A192F', fill_type='solid')
+    header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    thin_border = Border(
+        left=Side(style='thin', color='CCCCCC'),
+        right=Side(style='thin', color='CCCCCC'),
+        top=Side(style='thin', color='CCCCCC'),
+        bottom=Side(style='thin', color='CCCCCC')
+    )
+    
+    # Title row
+    ws.merge_cells('A1:I1')
+    title_cell = ws['A1']
+    title_cell.value = "Brilliant Grammar School - Enquiries Report"
+    title_cell.font = Font(name='Calibri', size=16, bold=True, color='0A192F')
+    title_cell.alignment = Alignment(horizontal='center', vertical='center')
+    ws.row_dimensions[1].height = 30
+    
+    # Subtitle - report date
+    ws.merge_cells('A2:I2')
+    subtitle = ws['A2']
+    subtitle.value = f"Generated on: {datetime.now(timezone.utc).strftime('%B %d, %Y at %H:%M UTC')}"
+    subtitle.font = Font(name='Calibri', size=10, italic=True, color='666666')
+    subtitle.alignment = Alignment(horizontal='center')
+    
+    # Headers (row 4)
+    headers = ["ID", "Student Name", "Parent Name", "Email", "Phone", "Class Interested", "Message", "Status", "Created At"]
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=4, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+    ws.row_dimensions[4].height = 30
+    
+    # Status color mapping
+    status_colors = {
+        'new': 'DBEAFE',
+        'contacted': 'FEF3C7',
+        'enrolled': 'D1FAE5',
+        'rejected': 'FEE2E2'
+    }
+    
+    # Data rows
+    for row_idx, enq in enumerate(enquiries, 5):
+        ws.cell(row=row_idx, column=1, value=enq.get("id", ""))
+        ws.cell(row=row_idx, column=2, value=enq.get("name", ""))
+        ws.cell(row=row_idx, column=3, value=enq.get("parent_name", ""))
+        ws.cell(row=row_idx, column=4, value=enq.get("email", ""))
+        ws.cell(row=row_idx, column=5, value=enq.get("phone", ""))
+        ws.cell(row=row_idx, column=6, value=enq.get("class_interested", ""))
+        ws.cell(row=row_idx, column=7, value=enq.get("message", ""))
+        
+        status = enq.get("status", "new")
+        status_cell = ws.cell(row=row_idx, column=8, value=status.capitalize())
+        status_cell.fill = PatternFill(
+            start_color=status_colors.get(status, 'F3F4F6'),
+            end_color=status_colors.get(status, 'F3F4F6'),
+            fill_type='solid'
+        )
+        status_cell.alignment = Alignment(horizontal='center')
+        
+        created_at = enq.get("created_at", "")
+        if created_at:
+            try:
+                dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                created_at = dt.strftime('%Y-%m-%d %H:%M')
+            except Exception:
+                pass
+        ws.cell(row=row_idx, column=9, value=created_at)
+        
+        # Apply borders to all cells in row
+        for col in range(1, 10):
+            ws.cell(row=row_idx, column=col).border = thin_border
+            ws.cell(row=row_idx, column=col).alignment = Alignment(vertical='top', wrap_text=True)
+    
+    # Column widths
+    column_widths = [15, 20, 20, 30, 15, 25, 40, 15, 20]
+    for col_idx, width in enumerate(column_widths, 1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+    
+    # Freeze panes below headers
+    ws.freeze_panes = 'A5'
+    
+    # ==================== SHEET 2: ANALYTICS & CHARTS ====================
+    ws2 = wb.create_sheet(title="Analytics")
+    
+    # Title
+    ws2.merge_cells('A1:F1')
+    analytics_title = ws2['A1']
+    analytics_title.value = "Enquiries Analytics Dashboard"
+    analytics_title.font = Font(name='Calibri', size=16, bold=True, color='0A192F')
+    analytics_title.alignment = Alignment(horizontal='center')
+    ws2.row_dimensions[1].height = 30
+    
+    # Total enquiries
+    ws2['A3'] = "Total Enquiries:"
+    ws2['A3'].font = Font(bold=True, size=12)
+    ws2['B3'] = len(enquiries)
+    ws2['B3'].font = Font(size=12, bold=True, color='D4AF37')
+    
+    # Status breakdown
+    ws2['A5'] = "Status Breakdown"
+    ws2['A5'].font = Font(bold=True, size=14, color='0A192F')
+    
+    status_counter = Counter(enq.get("status", "new") for enq in enquiries)
+    ws2['A6'] = "Status"
+    ws2['B6'] = "Count"
+    ws2['A6'].font = header_font
+    ws2['B6'].font = header_font
+    ws2['A6'].fill = header_fill
+    ws2['B6'].fill = header_fill
+    ws2['A6'].alignment = header_alignment
+    ws2['B6'].alignment = header_alignment
+    
+    status_row = 7
+    for status in ['new', 'contacted', 'enrolled', 'rejected']:
+        ws2.cell(row=status_row, column=1, value=status.capitalize())
+        ws2.cell(row=status_row, column=2, value=status_counter.get(status, 0))
+        status_row += 1
+    
+    # Class breakdown
+    ws2['D5'] = "Class-wise Interest"
+    ws2['D5'].font = Font(bold=True, size=14, color='0A192F')
+    
+    class_counter = Counter(enq.get("class_interested", "Unknown") for enq in enquiries)
+    ws2['D6'] = "Class"
+    ws2['E6'] = "Count"
+    ws2['D6'].font = header_font
+    ws2['E6'].font = header_font
+    ws2['D6'].fill = header_fill
+    ws2['E6'].fill = header_fill
+    ws2['D6'].alignment = header_alignment
+    ws2['E6'].alignment = header_alignment
+    
+    class_row = 7
+    for class_name, count in class_counter.most_common(10):
+        ws2.cell(row=class_row, column=4, value=class_name)
+        ws2.cell(row=class_row, column=5, value=count)
+        class_row += 1
+    
+    # Column widths for analytics sheet
+    ws2.column_dimensions['A'].width = 20
+    ws2.column_dimensions['B'].width = 15
+    ws2.column_dimensions['C'].width = 5
+    ws2.column_dimensions['D'].width = 25
+    ws2.column_dimensions['E'].width = 15
+    
+    # ==================== CHARTS ====================
+    if len(enquiries) > 0:
+        # Pie chart for status
+        pie = PieChart()
+        pie.title = "Enquiries by Status"
+        pie_data = Reference(ws2, min_col=2, min_row=6, max_row=10, max_col=2)
+        pie_labels = Reference(ws2, min_col=1, min_row=7, max_row=10)
+        pie.add_data(pie_data, titles_from_data=True)
+        pie.set_categories(pie_labels)
+        pie.height = 10
+        pie.width = 12
+        ws2.add_chart(pie, "A14")
+        
+        # Bar chart for classes
+        if len(class_counter) > 0:
+            bar = BarChart()
+            bar.type = "bar"
+            bar.title = "Enquiries by Class"
+            bar.y_axis.title = "Class"
+            bar.x_axis.title = "Number of Enquiries"
+            bar_data = Reference(ws2, min_col=5, min_row=6, max_row=6 + len(class_counter), max_col=5)
+            bar_labels = Reference(ws2, min_col=4, min_row=7, max_row=6 + len(class_counter))
+            bar.add_data(bar_data, titles_from_data=True)
+            bar.set_categories(bar_labels)
+            bar.height = 10
+            bar.width = 15
+            ws2.add_chart(bar, "H14")
+    
+    # Save to BytesIO
+    excel_buffer = io.BytesIO()
+    wb.save(excel_buffer)
+    excel_buffer.seek(0)
+    
+    filename = f"enquiries_report_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    return StreamingResponse(
+        excel_buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 

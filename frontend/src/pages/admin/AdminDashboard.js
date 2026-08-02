@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
-import { LogOut, Mail, Phone, Calendar, Trash2, CheckCircle, Clock, XCircle, Download, Bell, BarChart3 } from 'lucide-react';
+import { LogOut, Mail, Phone, Calendar, Trash2, CheckCircle, Clock, XCircle, Download, Bell, BarChart3, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -11,6 +11,7 @@ const AdminDashboard = () => {
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [analytics, setAnalytics] = useState(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const lastCheckTime = useRef(new Date().toISOString());
@@ -91,11 +92,41 @@ const AdminDashboard = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
       
-      toast.success('Enquiries exported successfully!');
+      toast.success('Enquiries exported as CSV!');
     } catch (error) {
       toast.error('Failed to export enquiries');
     } finally {
       setExporting(false);
+      setShowExportMenu(false);
+    }
+  };
+
+  const handleExportXLSX = async () => {
+    setExporting(true);
+    try {
+      const response = await axios.get(`${API_URL}/api/enquiries/export/xlsx`, {
+        withCredentials: true,
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `enquiries_report_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Excel report with charts downloaded!');
+    } catch (error) {
+      toast.error('Failed to export Excel report');
+    } finally {
+      setExporting(false);
+      setShowExportMenu(false);
     }
   };
 
@@ -178,21 +209,51 @@ const AdminDashboard = () => {
                 <BarChart3 className="w-5 h-5" />
                 <span>{showAnalytics ? 'Hide' : 'Show'} Analytics</span>
               </button>
-              <button
-                onClick={handleExportCSV}
-                disabled={exporting || enquiries.length === 0}
-                data-testid="export-csv-btn"
-                className="flex items-center space-x-2 bg-white text-[#0A192F] px-4 py-3 font-medium transition-all hover:bg-gray-100 body-font disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {exporting ? (
-                  <div className="spinner w-5 h-5 border-2 border-[#0A192F] border-t-transparent rounded-full"></div>
-                ) : (
-                  <>
-                    <Download className="w-5 h-5" />
-                    <span>Export CSV</span>
-                  </>
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  disabled={exporting || enquiries.length === 0}
+                  data-testid="export-menu-btn"
+                  className="flex items-center space-x-2 bg-white text-[#0A192F] px-4 py-3 font-medium transition-all hover:bg-gray-100 body-font disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {exporting ? (
+                    <div className="spinner w-5 h-5 border-2 border-[#0A192F] border-t-transparent rounded-full"></div>
+                  ) : (
+                    <>
+                      <Download className="w-5 h-5" />
+                      <span>Export</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
+                    </>
+                  )}
+                </button>
+                {showExportMenu && !exporting && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white shadow-lg border border-gray-200 z-50" data-testid="export-menu-dropdown">
+                    <button
+                      onClick={handleExportCSV}
+                      data-testid="export-csv-btn"
+                      className="w-full flex items-center space-x-3 px-4 py-3 text-left text-[#0A192F] hover:bg-gray-50 transition-colors body-font"
+                    >
+                      <FileText className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <div className="font-medium">CSV Format</div>
+                        <div className="text-xs text-gray-500">Simple data export</div>
+                      </div>
+                    </button>
+                    <div className="border-t border-gray-100"></div>
+                    <button
+                      onClick={handleExportXLSX}
+                      data-testid="export-xlsx-btn"
+                      className="w-full flex items-center space-x-3 px-4 py-3 text-left text-[#0A192F] hover:bg-gray-50 transition-colors body-font"
+                    >
+                      <FileSpreadsheet className="w-5 h-5 text-[#D4AF37]" />
+                      <div>
+                        <div className="font-medium">Excel Report</div>
+                        <div className="text-xs text-gray-500">With charts & analytics</div>
+                      </div>
+                    </button>
+                  </div>
                 )}
-              </button>
+              </div>
               <button
                 onClick={handleLogout}
                 data-testid="logout-btn"
