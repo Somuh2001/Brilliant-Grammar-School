@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
-import { LogOut, Mail, Phone, Calendar, Trash2, CheckCircle, Clock, XCircle, Download, Bell, BarChart3, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { LogOut, Mail, Phone, Calendar, Trash2, CheckCircle, Clock, XCircle, Download, Bell, BarChart3, FileText, FileSpreadsheet, ChevronDown, Filter, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -14,14 +14,24 @@ const AdminDashboard = () => {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [analytics, setAnalytics] = useState(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showDateFilter, setShowDateFilter] = useState(false);
   const lastCheckTime = useRef(new Date().toISOString());
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const fetchEnquiries = React.useCallback(async () => {
     try {
+      const params = {};
+      if (startDate) params.start_date = startDate;
+      if (endDate) {
+        // Add end of day time to endDate for inclusive filtering
+        params.end_date = endDate + 'T23:59:59.999Z';
+      }
       const { data } = await axios.get(`${API_URL}/api/enquiries`, {
-        withCredentials: true
+        withCredentials: true,
+        params
       });
       setEnquiries(data);
     } catch (error) {
@@ -30,7 +40,7 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [startDate, endDate]);
 
   const fetchAnalytics = React.useCallback(async () => {
     try {
@@ -74,10 +84,18 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, [checkNewEnquiries]);
 
+  const buildDateQueryString = () => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate + 'T23:59:59.999Z');
+    const qs = params.toString();
+    return qs ? `?${qs}` : '';
+  };
+
   const handleExportCSV = async () => {
     setExporting(true);
     try {
-      const response = await axios.get(`${API_URL}/api/enquiries/export/csv`, {
+      const response = await axios.get(`${API_URL}/api/enquiries/export/csv${buildDateQueryString()}`, {
         withCredentials: true,
         responseType: 'blob'
       });
@@ -104,7 +122,7 @@ const AdminDashboard = () => {
   const handleExportXLSX = async () => {
     setExporting(true);
     try {
-      const response = await axios.get(`${API_URL}/api/enquiries/export/xlsx`, {
+      const response = await axios.get(`${API_URL}/api/enquiries/export/xlsx${buildDateQueryString()}`, {
         withCredentials: true,
         responseType: 'blob'
       });
@@ -128,6 +146,11 @@ const AdminDashboard = () => {
       setExporting(false);
       setShowExportMenu(false);
     }
+  };
+
+  const clearDateFilter = () => {
+    setStartDate('');
+    setEndDate('');
   };
 
   const handleDelete = async (id) => {
@@ -269,6 +292,69 @@ const AdminDashboard = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Date Filter Bar */}
+        <div className="bg-white border border-gray-100 shadow-sm p-4 mb-6">
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              onClick={() => setShowDateFilter(!showDateFilter)}
+              data-testid="toggle-date-filter-btn"
+              className={`flex items-center space-x-2 px-4 py-2 font-medium body-font transition-all ${
+                (startDate || endDate) 
+                  ? 'bg-[#D4AF37] text-white hover:bg-[#B4952F]' 
+                  : 'bg-gray-100 text-[#0A192F] hover:bg-gray-200'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              <span>{(startDate || endDate) ? 'Filter Active' : 'Date Filter'}</span>
+            </button>
+            
+            {showDateFilter && (
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-600 body-font">From:</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    data-testid="start-date-input"
+                    className="px-3 py-2 border border-gray-300 body-font text-sm focus:ring-2 focus:ring-[#0A192F] focus:border-transparent"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-600 body-font">To:</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    data-testid="end-date-input"
+                    min={startDate}
+                    className="px-3 py-2 border border-gray-300 body-font text-sm focus:ring-2 focus:ring-[#0A192F] focus:border-transparent"
+                  />
+                </div>
+                {(startDate || endDate) && (
+                  <button
+                    onClick={clearDateFilter}
+                    data-testid="clear-date-filter-btn"
+                    className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-600 hover:text-red-600 body-font transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>Clear</span>
+                  </button>
+                )}
+              </div>
+            )}
+            
+            <div className="ml-auto text-sm text-gray-500 body-font">
+              Showing <span className="font-semibold text-[#0A192F]">{enquiries.length}</span> {enquiries.length === 1 ? 'enquiry' : 'enquiries'}
+              {(startDate || endDate) && (
+                <span className="ml-2 text-xs text-[#D4AF37]">
+                  (filtered by date)
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Analytics Panel */}
         {showAnalytics && analytics && (
           <div className="bg-white border border-gray-100 shadow-sm p-6 mb-8" data-testid="analytics-panel">
