@@ -18,9 +18,22 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const checkAuth = React.useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API_URL}/api/auth/me`, {
+        withCredentials: true
+      });
+      setUser(data);
+    } catch (error) {
+      setUser(false);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
   const checkAuth = async () => {
     try {

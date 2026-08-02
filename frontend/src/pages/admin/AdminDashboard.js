@@ -13,9 +13,23 @@ const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const fetchEnquiries = React.useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API_URL}/api/enquiries`, {
+        withCredentials: true
+      });
+      setEnquiries(data);
+    } catch (error) {
+      console.error('Error fetching enquiries:', error);
+      toast.error('Failed to load enquiries');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchEnquiries();
-  }, []);
+  }, [fetchEnquiries]);
 
   const fetchEnquiries = async () => {
     try {
