@@ -339,7 +339,7 @@ async def create_enquiry(enquiry: EnquiryCreate):
     return EnquiryResponse(**enquiry_doc)
 
 @api_router.get("/enquiries", response_model=List[EnquiryResponse])
-async def get_enquiries(request: Request, start_date: Optional[str] = None, end_date: Optional[str] = None):
+async def get_enquiries(request: Request, start_date: Optional[str] = None, end_date: Optional[str] = None, status: Optional[str] = None):
     await get_admin_user(request)
     query = {}
     if start_date or end_date:
@@ -349,6 +349,8 @@ async def get_enquiries(request: Request, start_date: Optional[str] = None, end_
         if end_date:
             date_query["$lte"] = end_date
         query["created_at"] = date_query
+    if status and status != "all":
+        query["status"] = status
     enquiries = await db.enquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return enquiries
 
@@ -372,7 +374,7 @@ async def update_enquiry_status(enquiry_id: str, status: dict, request: Request)
     return {"message": "Status updated successfully"}
 
 @api_router.get("/enquiries/export/csv")
-async def export_enquiries_csv(request: Request, start_date: Optional[str] = None, end_date: Optional[str] = None):
+async def export_enquiries_csv(request: Request, start_date: Optional[str] = None, end_date: Optional[str] = None, status: Optional[str] = None):
     await get_admin_user(request)
     query = {}
     if start_date or end_date:
@@ -382,6 +384,8 @@ async def export_enquiries_csv(request: Request, start_date: Optional[str] = Non
         if end_date:
             date_query["$lte"] = end_date
         query["created_at"] = date_query
+    if status and status != "all":
+        query["status"] = status
     enquiries = await db.enquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(10000)
     
     output = io.StringIO()
@@ -417,7 +421,7 @@ async def export_enquiries_csv(request: Request, start_date: Optional[str] = Non
     )
 
 @api_router.get("/enquiries/export/xlsx")
-async def export_enquiries_xlsx(request: Request, start_date: Optional[str] = None, end_date: Optional[str] = None):
+async def export_enquiries_xlsx(request: Request, start_date: Optional[str] = None, end_date: Optional[str] = None, status: Optional[str] = None):
     await get_admin_user(request)
     query = {}
     if start_date or end_date:
@@ -427,6 +431,8 @@ async def export_enquiries_xlsx(request: Request, start_date: Optional[str] = No
         if end_date:
             date_query["$lte"] = end_date
         query["created_at"] = date_query
+    if status and status != "all":
+        query["status"] = status
     enquiries = await db.enquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(10000)
     
     wb = Workbook()

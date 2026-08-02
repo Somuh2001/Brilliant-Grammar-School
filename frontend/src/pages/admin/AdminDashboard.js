@@ -16,6 +16,7 @@ const AdminDashboard = () => {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [showDateFilter, setShowDateFilter] = useState(false);
   const lastCheckTime = useRef(new Date().toISOString());
   const { user, logout } = useAuth();
@@ -26,8 +27,10 @@ const AdminDashboard = () => {
       const params = {};
       if (startDate) params.start_date = startDate;
       if (endDate) {
-        // Add end of day time to endDate for inclusive filtering
         params.end_date = endDate + 'T23:59:59.999Z';
+      }
+      if (statusFilter && statusFilter !== 'all') {
+        params.status = statusFilter;
       }
       const { data } = await axios.get(`${API_URL}/api/enquiries`, {
         withCredentials: true,
@@ -40,7 +43,7 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, statusFilter]);
 
   const fetchAnalytics = React.useCallback(async () => {
     try {
@@ -88,6 +91,7 @@ const AdminDashboard = () => {
     const params = new URLSearchParams();
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate + 'T23:59:59.999Z');
+    if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
     const qs = params.toString();
     return qs ? `?${qs}` : '';
   };
@@ -151,6 +155,7 @@ const AdminDashboard = () => {
   const clearDateFilter = () => {
     setStartDate('');
     setEndDate('');
+    setStatusFilter('all');
   };
 
   const handleDelete = async (id) => {
@@ -292,24 +297,39 @@ const AdminDashboard = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Date Filter Bar */}
+        {/* Filter Bar */}
         <div className="bg-white border border-gray-100 shadow-sm p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <button
               onClick={() => setShowDateFilter(!showDateFilter)}
               data-testid="toggle-date-filter-btn"
               className={`flex items-center space-x-2 px-4 py-2 font-medium body-font transition-all ${
-                (startDate || endDate) 
+                (startDate || endDate || statusFilter !== 'all')
                   ? 'bg-[#D4AF37] text-white hover:bg-[#B4952F]' 
                   : 'bg-gray-100 text-[#0A192F] hover:bg-gray-200'
               }`}
             >
               <Filter className="w-4 h-4" />
-              <span>{(startDate || endDate) ? 'Filter Active' : 'Date Filter'}</span>
+              <span>{(startDate || endDate || statusFilter !== 'all') ? 'Filters Active' : 'Filters'}</span>
             </button>
             
             {showDateFilter && (
               <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-600 body-font">Status:</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    data-testid="status-filter-select"
+                    className="px-3 py-2 border border-gray-300 body-font text-sm focus:ring-2 focus:ring-[#0A192F] focus:border-transparent cursor-pointer"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="new">New</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="enrolled">Enrolled</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
                 <div className="flex items-center space-x-2">
                   <label className="text-sm text-gray-600 body-font">From:</label>
                   <input
@@ -331,14 +351,14 @@ const AdminDashboard = () => {
                     className="px-3 py-2 border border-gray-300 body-font text-sm focus:ring-2 focus:ring-[#0A192F] focus:border-transparent"
                   />
                 </div>
-                {(startDate || endDate) && (
+                {(startDate || endDate || statusFilter !== 'all') && (
                   <button
                     onClick={clearDateFilter}
                     data-testid="clear-date-filter-btn"
                     className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-600 hover:text-red-600 body-font transition-colors"
                   >
                     <X className="w-4 h-4" />
-                    <span>Clear</span>
+                    <span>Clear All</span>
                   </button>
                 )}
               </div>
@@ -346,9 +366,9 @@ const AdminDashboard = () => {
             
             <div className="ml-auto text-sm text-gray-500 body-font">
               Showing <span className="font-semibold text-[#0A192F]">{enquiries.length}</span> {enquiries.length === 1 ? 'enquiry' : 'enquiries'}
-              {(startDate || endDate) && (
+              {(startDate || endDate || statusFilter !== 'all') && (
                 <span className="ml-2 text-xs text-[#D4AF37]">
-                  (filtered by date)
+                  (filtered)
                 </span>
               )}
             </div>
