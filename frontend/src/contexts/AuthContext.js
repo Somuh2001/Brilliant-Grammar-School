@@ -35,19 +35,6 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, [checkAuth]);
 
-  const checkAuth = async () => {
-    try {
-      const { data } = await axios.get(`${API_URL}/api/auth/me`, {
-        withCredentials: true
-      });
-      setUser(data);
-    } catch (error) {
-      setUser(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const login = async (email, password) => {
     try {
       const { data } = await axios.post(

@@ -31,20 +31,6 @@ const AdminDashboard = () => {
     fetchEnquiries();
   }, [fetchEnquiries]);
 
-  const fetchEnquiries = async () => {
-    try {
-      const { data } = await axios.get(`${API_URL}/api/enquiries`, {
-        withCredentials: true
-      });
-      setEnquiries(data);
-    } catch (error) {
-      console.error('Error fetching enquiries:', error);
-      toast.error('Failed to load enquiries');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this enquiry?')) {
       return;
