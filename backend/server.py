@@ -19,6 +19,9 @@ import asyncio
 import resend
 from bson import ObjectId
 from emergentintegrations.llm.chat import LlmChat, UserMessage
+import csv
+import io
+from fastapi.responses import StreamingResponse
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -107,6 +110,21 @@ class ChatMessage(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     session_id: str
+
+class PerformanceMetric(BaseModel):
+    page_url: str
+    load_time: float
+    dom_content_loaded: float
+    time_to_interactive: Optional[float] = None
+    user_agent: Optional[str] = None
+    session_id: Optional[str] = None
+
+class EngagementEvent(BaseModel):
+    event_type: str  # page_view, click, form_submit, etc.
+    page_url: str
+    element_id: Optional[str] = None
+    session_id: Optional[str] = None
+    metadata: Optional[dict] = None
 
 # ==================== AUTH HELPERS ====================
 
@@ -339,6 +357,136 @@ async def update_enquiry_status(enquiry_id: str, status: dict, request: Request)
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Enquiry not found")
     return {"message": "Status updated successfully"}
+
+@api_router.get("/enquiries/export/csv")
+async def export_enquiries_csv(request: Request):
+    await get_admin_user(request)
+    enquiries = await db.enquiries.find({}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write headers
+    writer.writerow([
+        "ID", "Student Name", "Parent Name", "Email", "Phone",
+        "Class Interested", "Message", "Status", "Created At"
+    ])
+    
+    # Write data rows
+    for enq in enquiries:
+        writer.writerow([
+            enq.get("id", ""),
+            enq.get("name", ""),
+            enq.get("parent_name", ""),
+            enq.get("email", ""),
+            enq.get("phone", ""),
+            enq.get("class_interested", ""),
+            enq.get("message", ""),
+            enq.get("status", "new"),
+            enq.get("created_at", "")
+        ])
+    
+    output.seek(0)
+    filename = f"enquiries_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
+    
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode('utf-8')),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.get("/enquiries/count/new")
+async def get_new_enquiries_count(request: Request, since: Optional[str] = None):
+    """Get count of new enquiries since a given timestamp for real-time notifications"""
+    await get_admin_user(request)
+    query = {"status": "new"}
+    if since:
+        query["created_at"] = {"$gt": since}
+    count = await db.enquiries.count_documents(query)
+    return {"count": count, "checked_at": datetime.now(timezone.utc).isoformat()}
+
+# ==================== PERFORMANCE MONITORING ROUTES ====================
+
+@api_router.post("/metrics/performance")
+async def track_performance(metric: PerformanceMetric):
+    """Track page performance metrics"""
+    doc = {
+        "id": str(uuid.uuid4()),
+        "page_url": metric.page_url,
+        "load_time": metric.load_time,
+        "dom_content_loaded": metric.dom_content_loaded,
+        "time_to_interactive": metric.time_to_interactive,
+        "user_agent": metric.user_agent,
+        "session_id": metric.session_id,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    await db.performance_metrics.insert_one(doc)
+    return {"message": "Metric recorded", "id": doc["id"]}
+
+@api_router.post("/metrics/engagement")
+async def track_engagement(event: EngagementEvent):
+    """Track user engagement events"""
+    doc = {
+        "id": str(uuid.uuid4()),
+        "event_type": event.event_type,
+        "page_url": event.page_url,
+        "element_id": event.element_id,
+        "session_id": event.session_id,
+        "metadata": event.metadata,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    await db.engagement_events.insert_one(doc)
+    return {"message": "Event recorded", "id": doc["id"]}
+
+@api_router.get("/metrics/analytics")
+async def get_analytics(request: Request):
+    """Get analytics summary for admin dashboard"""
+    await get_admin_user(request)
+    
+    # Get performance data
+    perf_pipeline = [
+        {"$group": {
+            "_id": "$page_url",
+            "avg_load_time": {"$avg": "$load_time"},
+            "avg_dom_ready": {"$avg": "$dom_content_loaded"},
+            "count": {"$sum": 1}
+        }},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]
+    page_performance = await db.performance_metrics.aggregate(perf_pipeline).to_list(10)
+    
+    # Get engagement stats
+    engagement_pipeline = [
+        {"$group": {
+            "_id": "$event_type",
+            "count": {"$sum": 1}
+        }}
+    ]
+    engagement_stats = await db.engagement_events.aggregate(engagement_pipeline).to_list(20)
+    
+    # Total counts
+    total_page_views = await db.engagement_events.count_documents({"event_type": "page_view"})
+    total_form_submits = await db.engagement_events.count_documents({"event_type": "form_submit"})
+    total_sessions = len(await db.engagement_events.distinct("session_id"))
+    
+    return {
+        "page_performance": [
+            {
+                "page": p["_id"],
+                "avg_load_time": round(p["avg_load_time"], 2),
+                "avg_dom_ready": round(p["avg_dom_ready"], 2),
+                "views": p["count"]
+            }
+            for p in page_performance
+        ],
+        "engagement": {stat["_id"]: stat["count"] for stat in engagement_stats},
+        "totals": {
+            "page_views": total_page_views,
+            "form_submits": total_form_submits,
+            "unique_sessions": total_sessions
+        }
+    }
 
 # ==================== CONTACT ROUTES ====================
 

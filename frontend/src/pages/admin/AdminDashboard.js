@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
-import { LogOut, Mail, Phone, Calendar, Trash2, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { LogOut, Mail, Phone, Calendar, Trash2, CheckCircle, Clock, XCircle, Download, Bell, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -10,6 +10,10 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 const AdminDashboard = () => {
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [analytics, setAnalytics] = useState(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const lastCheckTime = useRef(new Date().toISOString());
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -27,9 +31,73 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  const fetchAnalytics = React.useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API_URL}/api/metrics/analytics`, {
+        withCredentials: true
+      });
+      setAnalytics(data);
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    }
+  }, []);
+
+  const checkNewEnquiries = React.useCallback(async () => {
+    try {
+      const { data } = await axios.get(
+        `${API_URL}/api/enquiries/count/new?since=${encodeURIComponent(lastCheckTime.current)}`,
+        { withCredentials: true }
+      );
+      if (data.count > 0) {
+        toast.success(`${data.count} new enquiry${data.count > 1 ? 'ies' : ''} received!`, {
+          duration: 5000,
+        });
+        fetchEnquiries();
+      }
+      lastCheckTime.current = data.checked_at;
+    } catch (error) {
+      // Silently fail
+    }
+  }, [fetchEnquiries]);
+
   useEffect(() => {
     fetchEnquiries();
-  }, [fetchEnquiries]);
+    fetchAnalytics();
+  }, [fetchEnquiries, fetchAnalytics]);
+
+  // Poll for new enquiries every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkNewEnquiries();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [checkNewEnquiries]);
+
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      const response = await axios.get(`${API_URL}/api/enquiries/export/csv`, {
+        withCredentials: true,
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `enquiries_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Enquiries exported successfully!');
+    } catch (error) {
+      toast.error('Failed to export enquiries');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this enquiry?')) {
@@ -90,25 +158,113 @@ const AdminDashboard = () => {
       {/* Header */}
       <header className="bg-[#0A192F] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold heading-font">Admin Dashboard</h1>
-              <p className="text-gray-300 body-font mt-1">Welcome, {user?.name}</p>
+              <p className="text-gray-300 body-font mt-1 flex items-center">
+                Welcome, {user?.name}
+                <span className="ml-3 inline-flex items-center text-xs text-green-400">
+                  <Bell className="w-3 h-3 mr-1 animate-pulse" />
+                  Live monitoring active
+                </span>
+              </p>
             </div>
-            <button
-              onClick={handleLogout}
-              data-testid="logout-btn"
-              className="flex items-center space-x-2 bg-[#D4AF37] text-white px-6 py-3 font-medium transition-all hover:bg-[#B4952F] body-font"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Logout</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setShowAnalytics(!showAnalytics)}
+                data-testid="analytics-toggle-btn"
+                className="flex items-center space-x-2 bg-white/10 border border-white/20 text-white px-4 py-3 font-medium transition-all hover:bg-white/20 body-font"
+              >
+                <BarChart3 className="w-5 h-5" />
+                <span>{showAnalytics ? 'Hide' : 'Show'} Analytics</span>
+              </button>
+              <button
+                onClick={handleExportCSV}
+                disabled={exporting || enquiries.length === 0}
+                data-testid="export-csv-btn"
+                className="flex items-center space-x-2 bg-white text-[#0A192F] px-4 py-3 font-medium transition-all hover:bg-gray-100 body-font disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {exporting ? (
+                  <div className="spinner w-5 h-5 border-2 border-[#0A192F] border-t-transparent rounded-full"></div>
+                ) : (
+                  <>
+                    <Download className="w-5 h-5" />
+                    <span>Export CSV</span>
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleLogout}
+                data-testid="logout-btn"
+                className="flex items-center space-x-2 bg-[#D4AF37] text-white px-4 py-3 font-medium transition-all hover:bg-[#B4952F] body-font"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Analytics Panel */}
+        {showAnalytics && analytics && (
+          <div className="bg-white border border-gray-100 shadow-sm p-6 mb-8" data-testid="analytics-panel">
+            <h2 className="text-xl font-bold text-[#0A192F] heading-font mb-4 flex items-center">
+              <BarChart3 className="w-5 h-5 mr-2 text-[#D4AF37]" />
+              Website Analytics
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-gray-50 p-4">
+                <h3 className="text-sm text-gray-500 body-font">Total Page Views</h3>
+                <p className="text-2xl font-bold text-[#0A192F] heading-font mt-1">
+                  {analytics.totals.page_views}
+                </p>
+              </div>
+              <div className="bg-gray-50 p-4">
+                <h3 className="text-sm text-gray-500 body-font">Form Submissions</h3>
+                <p className="text-2xl font-bold text-[#0A192F] heading-font mt-1">
+                  {analytics.totals.form_submits}
+                </p>
+              </div>
+              <div className="bg-gray-50 p-4">
+                <h3 className="text-sm text-gray-500 body-font">Unique Sessions</h3>
+                <p className="text-2xl font-bold text-[#0A192F] heading-font mt-1">
+                  {analytics.totals.unique_sessions}
+                </p>
+              </div>
+            </div>
+            {analytics.page_performance && analytics.page_performance.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-[#0A192F] heading-font mb-3">Top Pages Performance</h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left body-font text-gray-600">Page</th>
+                        <th className="px-4 py-2 text-left body-font text-gray-600">Views</th>
+                        <th className="px-4 py-2 text-left body-font text-gray-600">Avg Load Time</th>
+                        <th className="px-4 py-2 text-left body-font text-gray-600">Avg DOM Ready</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analytics.page_performance.map((page) => (
+                        <tr key={page.page} className="border-t border-gray-100">
+                          <td className="px-4 py-2 body-font">{page.page}</td>
+                          <td className="px-4 py-2 body-font">{page.views}</td>
+                          <td className="px-4 py-2 body-font">{page.avg_load_time}ms</td>
+                          <td className="px-4 py-2 body-font">{page.avg_dom_ready}ms</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           <div className="bg-white border border-gray-100 shadow-sm p-6">

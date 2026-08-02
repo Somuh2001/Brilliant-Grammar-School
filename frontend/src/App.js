@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Navigation from './components/Navigation';
 import Footer from './components/Footer';
 import Chatbot from './components/Chatbot';
+import PerformanceTracker from './components/PerformanceTracker';
 import Home from './pages/Home';
 import About from './pages/About';
 import Courses from './pages/Courses';
@@ -22,6 +23,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Toaster position="top-right" richColors />
+        <PerformanceTracker />
         <div className="App body-font">
           <Routes>
             {/* Public Routes */}
